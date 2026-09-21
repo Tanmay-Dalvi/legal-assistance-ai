@@ -20,6 +20,7 @@ _BASE_DATA_DIR = Path("./data").resolve()
 UPLOAD_DIR = _BASE_DATA_DIR / "uploads"
 EXTRACTED_DIR = _BASE_DATA_DIR / "extracted"
 TEMP_DIR = _BASE_DATA_DIR / "temp"
+VECTOR_INDEX_DIR = _BASE_DATA_DIR / "vector_index"
 
 
 def init_storage() -> None:
@@ -27,6 +28,7 @@ def init_storage() -> None:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     EXTRACTED_DIR.mkdir(parents=True, exist_ok=True)
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    VECTOR_INDEX_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # Initialize on import
@@ -50,6 +52,14 @@ def get_safe_extracted_path(document_id: str) -> Path:
     """
     safe_path = (EXTRACTED_DIR / f"{document_id}.json").resolve()
     if not safe_path.is_relative_to(EXTRACTED_DIR):
+        raise AppError("Invalid document ID: Path traversal detected.")
+    return safe_path
+
+
+def get_safe_vector_index_path(document_id: str) -> Path:
+    """Return a document-scoped local vector index path."""
+    safe_path = (VECTOR_INDEX_DIR / f"{document_id}.json").resolve()
+    if not safe_path.is_relative_to(VECTOR_INDEX_DIR):
         raise AppError("Invalid document ID: Path traversal detected.")
     return safe_path
 
@@ -89,6 +99,13 @@ def delete_document_files(stored_filename: str, document_id: str) -> None:
         extracted_path = get_safe_extracted_path(document_id)
         if extracted_path.exists():
             extracted_path.unlink()
+    except AppError:
+        pass
+
+    try:
+        index_path = get_safe_vector_index_path(document_id)
+        if index_path.exists():
+            index_path.unlink()
     except AppError:
         pass
 

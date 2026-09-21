@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     GEMINI_TIMEOUT_SECONDS: float = 60.0
     GEMINI_MAX_RETRIES: int = 2
     MAX_ANALYSIS_CHARACTERS: int = 100_000
+    RAG_CHUNK_SIZE: int = 1_200
+    RAG_CHUNK_OVERLAP: int = 200
+    RAG_EMBEDDING_BATCH_SIZE: int = 16
+    RAG_TOP_K: int = 5
+    RAG_MIN_SIMILARITY: float = 0.35
 
     # ------------------------------------------------------------------ #
     # Database
@@ -127,6 +132,33 @@ class Settings(BaseSettings):
         if value < 0:
             raise ValueError("Configured limits must not be negative.")
         return value
+
+    @field_validator("RAG_CHUNK_SIZE", "RAG_EMBEDDING_BATCH_SIZE", "RAG_TOP_K")
+    @classmethod
+    def validate_rag_positive_limits(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("RAG limits must be greater than zero.")
+        return value
+
+    @field_validator("RAG_CHUNK_OVERLAP")
+    @classmethod
+    def validate_rag_overlap(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("RAG_CHUNK_OVERLAP must not be negative.")
+        return value
+
+    @field_validator("RAG_MIN_SIMILARITY")
+    @classmethod
+    def validate_similarity(cls, value: float) -> float:
+        if not 0 <= value <= 1:
+            raise ValueError("RAG_MIN_SIMILARITY must be between zero and one.")
+        return value
+
+    @model_validator(mode="after")
+    def validate_rag_settings(self) -> "Settings":
+        if self.RAG_CHUNK_OVERLAP >= self.RAG_CHUNK_SIZE:
+            raise ValueError("RAG_CHUNK_OVERLAP must be smaller than RAG_CHUNK_SIZE.")
+        return self
 
 
 @lru_cache(maxsize=1)

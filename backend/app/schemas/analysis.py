@@ -15,6 +15,8 @@ class Severity(str, Enum):
 
 
 class EvidenceReference(BaseModel):
+    chunk_id: str | None = None
+    document_id: str | None = None
     section_id: str | None = None
     page_number: int | None = Field(default=None, ge=1)
     heading: str | None = None

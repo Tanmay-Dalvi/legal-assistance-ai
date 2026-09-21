@@ -11,6 +11,7 @@ from fastapi import UploadFile
 
 from app.models.document import Document, ProcessingStatus
 from app.models.analysis import Analysis
+from app.models.rag import DocumentChunkMetadata, DocumentIndex
 from app.core.exceptions import (
     NotFoundError,
     UnsupportedFileTypeError,
@@ -163,6 +164,8 @@ class DocumentService:
         doc = await self.get_document(document_id)
         
         await self.db.execute(delete(Analysis).where(Analysis.document_id == document_id))
+        await self.db.execute(delete(DocumentChunkMetadata).where(DocumentChunkMetadata.document_id == document_id))
+        await self.db.execute(delete(DocumentIndex).where(DocumentIndex.document_id == document_id))
         # Remove DB record
         await self.db.delete(doc)
         await self.db.commit()

@@ -44,3 +44,11 @@ npm run build
 ```
 
 Analysis currently sends only documents within the configured direct-analysis limit. Chunking, embeddings, semantic retrieval, and comparison are reserved for later milestones.
+
+## RAG and document Q&A
+
+The RAG foundation keeps extracted content as the source of truth, splits it into deterministic sentence-aware chunks with page and section provenance, and generates Gemini embeddings in bounded batches. A per-document JSON vector index is stored locally under `backend/data/vector_index/`; SQLite stores index status and chunk metadata. These generated files are ignored by Git and must not be committed.
+
+Index a ready document from the analysis page or with `POST /api/v1/documents/{document_id}/index`. Retrieval is restricted to that document and applies a configurable similarity threshold before chunks are passed to Gemini. Questions use `POST /api/v1/documents/{document_id}/qa` and return only validated source references, or an explicit not-found response when evidence is insufficient.
+
+RAG configuration includes `RAG_CHUNK_SIZE`, `RAG_CHUNK_OVERLAP`, `RAG_EMBEDDING_BATCH_SIZE`, `RAG_TOP_K`, and `RAG_MIN_SIMILARITY`. Gemini access is required for indexing and answered questions. This implementation is local-first and synchronous; OCR, background workers, embeddings caches, and remote vector databases are outside this milestone.
