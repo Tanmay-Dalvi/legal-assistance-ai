@@ -6,10 +6,11 @@ Coordinates file saving, metadata database records, and extraction.
 import uuid
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from fastapi import UploadFile
 
 from app.models.document import Document, ProcessingStatus
+from app.models.analysis import Analysis
 from app.core.exceptions import (
     NotFoundError,
     UnsupportedFileTypeError,
@@ -161,6 +162,7 @@ class DocumentService:
     async def delete_document(self, document_id: str) -> None:
         doc = await self.get_document(document_id)
         
+        await self.db.execute(delete(Analysis).where(Analysis.document_id == document_id))
         # Remove DB record
         await self.db.delete(doc)
         await self.db.commit()

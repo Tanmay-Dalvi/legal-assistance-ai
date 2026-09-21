@@ -93,6 +93,45 @@ class ConfigurationError(AppError):
         )
 
 
+class AnalysisUnavailableError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="Document analysis is temporarily unavailable.",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            error_code="ANALYSIS_UNAVAILABLE",
+        )
+
+
+class AnalysisConflictError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="Document analysis is already in progress.",
+            status_code=status.HTTP_409_CONFLICT,
+            error_code="ANALYSIS_IN_PROGRESS",
+        )
+
+
+class AnalysisInputTooLargeError(AppError):
+    def __init__(self, max_characters: int) -> None:
+        super().__init__(
+            message=(
+                "This document is too large for direct analysis. "
+                f"The current limit is {max_characters:,} characters."
+            ),
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            error_code="ANALYSIS_INPUT_TOO_LARGE",
+        )
+
+
+class InvalidAnalysisError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="The analysis service returned an invalid result.",
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            error_code="INVALID_ANALYSIS_RESULT",
+        )
+
+
 # ------------------------------------------------------------------ #
 # FastAPI exception handlers
 # ------------------------------------------------------------------ #

@@ -51,6 +51,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Import models here so Base.metadata.create_all finds them
     import app.models.document  # noqa: F401
+    import app.models.analysis  # noqa: F401
     
     from app.core.database import init_db
     await init_db()

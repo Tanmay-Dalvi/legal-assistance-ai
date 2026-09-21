@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-pro"
     GEMINI_EMBEDDING_MODEL: str = "models/text-embedding-004"
+    GEMINI_TIMEOUT_SECONDS: float = 60.0
+    GEMINI_MAX_RETRIES: int = 2
+    MAX_ANALYSIS_CHARACTERS: int = 100_000
 
     # ------------------------------------------------------------------ #
     # Database
@@ -110,6 +113,20 @@ class Settings(BaseSettings):
             if self.SECRET_KEY == "change-me-in-production-use-a-long-random-secret":
                 raise ValueError("SECRET_KEY must be changed from default in production.")
         return self
+
+    @field_validator("GEMINI_TIMEOUT_SECONDS")
+    @classmethod
+    def validate_gemini_timeout(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("GEMINI_TIMEOUT_SECONDS must be greater than zero.")
+        return value
+
+    @field_validator("GEMINI_MAX_RETRIES", "MAX_ANALYSIS_CHARACTERS")
+    @classmethod
+    def validate_positive_limits(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("Configured limits must not be negative.")
+        return value
 
 
 @lru_cache(maxsize=1)

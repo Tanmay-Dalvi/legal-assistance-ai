@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import {
   FileText,
@@ -95,6 +96,7 @@ const HOW_IT_WORKS = [
 ]
 
 export default function HomePage() {
+  const navigate = useNavigate()
   const [documents, setDocuments] = useState<DocumentResponse[]>([])
   const [isLoadingDocs, setIsLoadingDocs] = useState(true)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
@@ -259,7 +261,7 @@ export default function HomePage() {
                         <button 
                           className="btn-secondary !px-3 !py-1.5 text-xs"
                           disabled={doc.processing_status !== 'ready'}
-                          onClick={() => alert('AI Analysis will be implemented in the next phase!')}
+                          onClick={() => navigate(`/analyze/${doc.id}`)}
                         >
                           Analyze
                         </button>

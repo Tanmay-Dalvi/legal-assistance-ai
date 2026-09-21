@@ -12,7 +12,7 @@ class ApiClientError extends Error {
   }
 }
 
-async function handleResponse<T>(response: Response): Promise<T> {
+export async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let errorData: ApiError | null = null
     try {

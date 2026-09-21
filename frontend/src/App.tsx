@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import MainLayout from '@/layouts/MainLayout'
 import HomePage from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
+import AnalysisPage from '@/pages/AnalysisPage'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
 /**
@@ -16,8 +17,8 @@ export default function App() {
         <Routes>
           <Route element={<MainLayout />}>
             <Route path="/" element={<HomePage />} />
+            <Route path="/analyze/:documentId" element={<AnalysisPage />} />
             {/* Future routes:
-              <Route path="/analyze" element={<AnalysisPage />} />
               <Route path="/compare" element={<ComparisonPage />} />
               <Route path="/qa" element={<QAPage />} />
               <Route path="/summary/:id" element={<SummaryPage />} />
