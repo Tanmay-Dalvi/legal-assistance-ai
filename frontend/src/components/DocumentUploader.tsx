@@ -12,6 +12,7 @@ interface DocumentUploaderProps {
 export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const { upload, isUploading, error, clearError } = useDocumentUpload(onUploadSuccess)
@@ -35,12 +36,12 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
 
   const handleFileSelect = (file: File) => {
     clearError()
+    setValidationError(null)
     const validationError = validateFile(file)
     if (validationError) {
-      // Create a fake error in the hook state for UI consistency
       setSelectedFile(null)
+      setValidationError(validationError)
       if (fileInputRef.current) fileInputRef.current.value = ''
-      alert(validationError) // simple alert for now, could use a toast
       return
     }
     setSelectedFile(file)
@@ -130,6 +131,16 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
         </div>
       )}
 
+      {validationError && !error && (
+        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 text-red-700" role="alert">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <div className="flex-1 text-sm">{validationError}</div>
+          <button onClick={() => setValidationError(null)} className="text-red-500 hover:text-red-700" aria-label="Dismiss validation error">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {selectedFile && !error && (
         <div className="mt-4 p-4 border border-slate-200 rounded-lg bg-white flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -151,6 +162,7 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
               onClick={() => {
                 setSelectedFile(null)
                 clearError()
+                setValidationError(null)
                 if (fileInputRef.current) fileInputRef.current.value = ''
               }}
               disabled={isUploading}

@@ -8,6 +8,7 @@ from pathlib import Path
 from docx import Document as DocxDocument
 from reportlab.pdfgen import canvas
 from fastapi.testclient import TestClient
+from app.services import storage_service
 
 # Ensure test database is used
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test_legal_ai_full.db"
@@ -65,6 +66,18 @@ def fake_pdf(tmp_path):
 def fake_docx(tmp_path):
     p = tmp_path / "fake.docx"
     p.write_text("This is just text but named as docx.")
+    return p
+
+@pytest.fixture
+def malformed_pdf(tmp_path):
+    p = tmp_path / "malformed.pdf"
+    p.write_bytes(b"%PDF-1.7\nnot a real pdf")
+    return p
+
+@pytest.fixture
+def malformed_docx(tmp_path):
+    p = tmp_path / "malformed.docx"
+    p.write_bytes(b"PK\x03\x04not a real docx")
     return p
 
 
@@ -157,6 +170,35 @@ class TestDocumentUploads:
             )
         assert response.status_code == 422
 
+    def test_mime_mismatch(self, client, txt_file):
+        with open(txt_file, "rb") as f:
+            response = client.post(
+                "/api/v1/documents/upload",
+                files={"file": ("test.txt", f, "application/pdf")},
+            )
+        assert response.status_code == 415
+        assert response.json()["error"]["code"] == "UNSUPPORTED_FILE_TYPE"
+
+    def test_malformed_pdf_is_sanitized(self, client, malformed_pdf):
+        with open(malformed_pdf, "rb") as f:
+            response = client.post(
+                "/api/v1/documents/upload",
+                files={"file": ("malformed.pdf", f, "application/pdf")},
+            )
+        assert response.status_code == 422
+        body = response.json()
+        assert body["error"]["message"] == "The uploaded document could not be read or is malformed."
+        assert "Traceback" not in response.text
+
+    def test_malformed_docx_is_sanitized(self, client, malformed_docx):
+        with open(malformed_docx, "rb") as f:
+            response = client.post(
+                "/api/v1/documents/upload",
+                files={"file": ("malformed.docx", f, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            )
+        assert response.status_code == 422
+        assert "Traceback" not in response.text
+
     # 21. Path traversal attempt (backend drops relative paths from standard upload filename, but we can try to force it if FastAPI allows it, though it usually doesn't. 
     # Let's test the storage service path traversal directly later, or via api if possible).
     def test_path_traversal_api(self, client, txt_file):
@@ -217,3 +259,15 @@ class TestDocumentLifecycle:
         res = client.get("/api/v1/health")
         assert res.status_code == 200
         assert res.json()["status"] == "ok"
+
+
+class TestStorageBoundaries:
+    def test_upload_path_rejects_traversal_and_sibling_prefix(self):
+        with pytest.raises(Exception):
+            storage_service.get_safe_upload_path("../../evil.txt")
+        with pytest.raises(Exception):
+            storage_service.get_safe_upload_path("../uploads-elsewhere/evil.txt")
+
+    def test_extracted_path_rejects_traversal(self):
+        with pytest.raises(Exception):
+            storage_service.get_safe_extracted_path("../../evil")

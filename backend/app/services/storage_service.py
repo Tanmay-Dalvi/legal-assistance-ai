@@ -5,7 +5,6 @@ Handles secure file storage in the application data directory.
 Prevents path traversal and enforces storage boundaries.
 """
 
-import os
 import shutil
 from pathlib import Path
 
@@ -40,7 +39,7 @@ def get_safe_upload_path(filename: str) -> Path:
     Raises an error if path traversal is attempted.
     """
     safe_path = (UPLOAD_DIR / filename).resolve()
-    if not str(safe_path).startswith(str(UPLOAD_DIR)):
+    if not safe_path.is_relative_to(UPLOAD_DIR):
         raise AppError("Invalid filename: Path traversal detected.")
     return safe_path
 
@@ -50,7 +49,7 @@ def get_safe_extracted_path(document_id: str) -> Path:
     Returns a safe Path for storing extracted data for a document.
     """
     safe_path = (EXTRACTED_DIR / f"{document_id}.json").resolve()
-    if not str(safe_path).startswith(str(EXTRACTED_DIR)):
+    if not safe_path.is_relative_to(EXTRACTED_DIR):
         raise AppError("Invalid document ID: Path traversal detected.")
     return safe_path
 
@@ -60,6 +59,8 @@ async def save_upload_file(upload_file: UploadFile, stored_filename: str) -> Pat
     Save an uploaded file safely to disk.
     """
     destination = get_safe_upload_path(stored_filename)
+    if Path(stored_filename).name != stored_filename:
+        raise AppError("Invalid stored filename.")
     
     # Read/write in chunks to avoid loading giant files into memory
     try:
@@ -68,7 +69,7 @@ async def save_upload_file(upload_file: UploadFile, stored_filename: str) -> Pat
     except Exception as e:
         if destination.exists():
             destination.unlink()
-        raise AppError(f"Failed to save file: {e!s}")
+        raise AppError("Failed to save uploaded file.") from e
     
     return destination
 

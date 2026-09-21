@@ -10,7 +10,11 @@ from sqlalchemy import select
 from fastapi import UploadFile
 
 from app.models.document import Document, ProcessingStatus
-from app.core.exceptions import AppError, NotFoundError, UnsupportedFileTypeError
+from app.core.exceptions import (
+    NotFoundError,
+    UnsupportedFileTypeError,
+    ValidationError,
+)
 from app.core.config import get_settings
 from app.services import storage_service
 from app.document_processing.pdf_parser import PDFParser
@@ -18,6 +22,14 @@ from app.document_processing.docx_parser import DocxParser
 from app.document_processing.txt_parser import TxtParser
 
 settings = get_settings()
+
+EXPECTED_MIME_TYPES = {
+    "pdf": {"application/pdf"},
+    "docx": {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    },
+    "txt": {"text/plain"},
+}
 
 def get_parser(file_type: str):
     if file_type == "pdf":
@@ -43,10 +55,10 @@ class DocumentService:
         
         if file_ext not in settings.ALLOWED_EXTENSIONS:
             raise UnsupportedFileTypeError(settings.ALLOWED_EXTENSIONS)
-            
-        # Validate MIME
-        # Note: In production, rely on actual file headers (e.g. via python-magic), 
-        # but for hackathon, validating client MIME and extension is a reasonable baseline.
+
+        content_type = (upload_file.content_type or "").lower()
+        if content_type not in EXPECTED_MIME_TYPES[file_ext]:
+            raise UnsupportedFileTypeError(settings.ALLOWED_EXTENSIONS)
         
         # Generate safe internal IDs
         doc_id = str(uuid.uuid4())
@@ -58,7 +70,6 @@ class DocumentService:
         
         if file_size == 0:
             file_path.unlink()
-            from app.core.exceptions import ValidationError
             raise ValidationError("Uploaded file is empty.")
             
         if file_size > settings.max_upload_size_bytes:
@@ -87,7 +98,6 @@ class DocumentService:
                     
         if not is_valid_format:
             file_path.unlink()
-            from app.core.exceptions import ValidationError
             raise ValidationError(f"File content does not match the {file_ext.upper()} extension.")
 
             
@@ -97,7 +107,7 @@ class DocumentService:
             original_filename=original_filename,
             stored_filename=stored_filename,
             file_type=file_ext,
-            mime_type=upload_file.content_type or "application/octet-stream",
+            mime_type=content_type,
             file_size=file_size,
             storage_path=str(file_path.name),
             processing_status=ProcessingStatus.PROCESSING,
@@ -121,12 +131,15 @@ class DocumentService:
             with extracted_path.open("w", encoding="utf-8") as f:
                 f.write(extracted_content.model_dump_json())
                 
-        except Exception as e:
-            # Safe processing failure
+        except ValueError as e:
+            storage_service.delete_document_files(doc.stored_filename, doc.id)
+            await self.db.delete(doc)
+            await self.db.commit()
+            raise ValidationError("The uploaded document could not be read or is malformed.") from e
+        except Exception:
+            # Keep an auditable record, but never expose parser or filesystem details.
             doc.processing_status = ProcessingStatus.FAILED
-            doc.error_message = str(e)
-            # Do not delete the file in case we need to retry or debug, 
-            # but mark it failed.
+            doc.error_message = "Document processing failed. Please try again."
             
         self.db.add(doc)
         await self.db.commit()
