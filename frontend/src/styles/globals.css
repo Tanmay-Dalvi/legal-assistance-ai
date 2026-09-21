@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ */
+/* Base layer                                                          */
+/* ------------------------------------------------------------------ */
+
+@layer base {
+  :root {
+    --color-primary: theme('colors.brand.500');
+    --color-primary-dark: theme('colors.brand.700');
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans;
+    @apply leading-relaxed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight leading-tight;
+  }
+
+  /* Focus-visible for accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2;
+  }
+
+  /* Smooth scrollbar styling */
+  ::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Component layer                                                     */
+/* ------------------------------------------------------------------ */
+
+@layer components {
+  /* Primary button */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-lg
+           bg-brand-500 text-white font-medium text-sm
+           hover:bg-brand-600 active:bg-brand-700
+           transition-colors duration-150
+           focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-lg
+           bg-white text-slate-700 font-medium text-sm
+           border border-slate-200
+           hover:bg-slate-50 active:bg-slate-100
+           transition-colors duration-150
+           focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg
+           text-slate-600 font-medium text-sm
+           hover:bg-slate-100 active:bg-slate-200
+           transition-colors duration-150;
+  }
+
+  /* Card */
+  .card {
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+  }
+
+  /* Input */
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white
+           px-3 py-2 text-sm text-slate-900 placeholder-slate-400
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
+           disabled:bg-slate-50 disabled:cursor-not-allowed
+           transition-shadow duration-150;
+  }
+
+  /* Label */
+  .label {
+    @apply block text-sm font-medium text-slate-700 mb-1;
+  }
+
+  /* Disclaimer banner */
+  .disclaimer-banner {
+    @apply flex items-start gap-3 p-4 rounded-lg
+           bg-amber-50 border border-amber-200 text-amber-800 text-sm;
+  }
+
+  /* Risk badge */
+  .badge-risk-high {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+           bg-red-100 text-red-700;
+  }
+  .badge-risk-medium {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+           bg-amber-100 text-amber-700;
+  }
+  .badge-risk-low {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+           bg-green-100 text-green-700;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Utility layer                                                       */
+/* ------------------------------------------------------------------ */
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+}
+
