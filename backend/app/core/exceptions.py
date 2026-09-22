@@ -132,6 +132,27 @@ class InvalidAnalysisError(AppError):
         )
 
 
+class ComparisonInputTooLargeError(AppError):
+    def __init__(self, max_characters: int) -> None:
+        super().__init__(
+            message=(
+                "These documents are too large for direct comparison. "
+                f"The current limit is {max_characters:,} combined characters."
+            ),
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            error_code="COMPARISON_INPUT_TOO_LARGE",
+        )
+
+
+class ComparisonConflictError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="This document pair is already being compared.",
+            status_code=status.HTTP_409_CONFLICT,
+            error_code="COMPARISON_IN_PROGRESS",
+        )
+
+
 # ------------------------------------------------------------------ #
 # FastAPI exception handlers
 # ------------------------------------------------------------------ #

@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     RAG_EMBEDDING_BATCH_SIZE: int = 16
     RAG_TOP_K: int = 5
     RAG_MIN_SIMILARITY: float = 0.35
+    MAX_COMPARISON_CHARACTERS: int = 150_000
+    MAX_COMPARISON_SECTIONS: int = 100
 
     # ------------------------------------------------------------------ #
     # Database
@@ -126,7 +128,7 @@ class Settings(BaseSettings):
             raise ValueError("GEMINI_TIMEOUT_SECONDS must be greater than zero.")
         return value
 
-    @field_validator("GEMINI_MAX_RETRIES", "MAX_ANALYSIS_CHARACTERS")
+    @field_validator("GEMINI_MAX_RETRIES", "MAX_ANALYSIS_CHARACTERS", "MAX_COMPARISON_CHARACTERS", "MAX_COMPARISON_SECTIONS")
     @classmethod
     def validate_positive_limits(cls, value: int) -> int:
         if value < 0:

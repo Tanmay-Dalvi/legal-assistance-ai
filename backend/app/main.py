@@ -53,6 +53,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     import app.models.document  # noqa: F401
     import app.models.analysis  # noqa: F401
     import app.models.rag  # noqa: F401
+    import app.models.comparison  # noqa: F401
     
     from app.core.database import init_db
     await init_db()

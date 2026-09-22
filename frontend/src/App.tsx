@@ -3,6 +3,7 @@ import MainLayout from '@/layouts/MainLayout'
 import HomePage from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import AnalysisPage from '@/pages/AnalysisPage'
+import ComparisonPage from '@/pages/ComparisonPage'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
 /**
@@ -18,8 +19,8 @@ export default function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/analyze/:documentId" element={<AnalysisPage />} />
+            <Route path="/compare" element={<ComparisonPage />} />
             {/* Future routes:
-              <Route path="/compare" element={<ComparisonPage />} />
               <Route path="/qa" element={<QAPage />} />
               <Route path="/summary/:id" element={<SummaryPage />} />
             */}

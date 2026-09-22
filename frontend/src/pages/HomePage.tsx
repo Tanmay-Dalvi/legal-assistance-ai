@@ -202,6 +202,9 @@ export default function HomePage() {
           </div>
           
           <DocumentUploader onUploadSuccess={() => loadDocuments()} />
+          <div className="mt-6 flex justify-end">
+            <a href="/compare" className="btn-secondary">Compare two documents</a>
+          </div>
           
           <div className="mt-16">
             <div className="flex items-center justify-between mb-6">
