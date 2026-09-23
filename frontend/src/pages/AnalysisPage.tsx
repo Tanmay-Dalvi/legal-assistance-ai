@@ -5,18 +5,16 @@ import { useAnalysis } from '../hooks/useAnalysis'
 import { EvidenceReference, LegalAnalysisResult, RiskItem } from '../types/analysis'
 import { IndexResponse, QAResponse } from '../types/qa'
 import { RAGAPI } from '../services/qaService'
+import { DocumentAPI } from '../services/api'
+import { DocumentResponse } from '../types/document'
+import EvidenceCard from '../components/EvidenceCard'
+import StatusBadge from '../components/StatusBadge'
 
 function Evidence({ references }: { references: EvidenceReference[] }) {
   if (references.length === 0) return null
   return (
-    <div className="mt-3 flex flex-wrap gap-2" aria-label="Source references">
-      {references.map((reference, index) => (
-        <span key={`${reference.section_id}-${index}`} className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">
-          {reference.page_number ? `Page ${reference.page_number}` : reference.heading || reference.section_id || 'Source'}
-          <span aria-hidden="true">·</span>
-          <span className="max-w-xs truncate">“{reference.quote}”</span>
-        </span>
-      ))}
+    <div className="mt-3 space-y-2" aria-label="Source references">
+      {references.map((reference, index) => <EvidenceCard key={`${reference.section_id}-${index}`} evidence={reference} />)}
     </div>
   )
 }
@@ -64,6 +62,7 @@ function ResultView({ result }: { result: LegalAnalysisResult }) {
 
 export default function AnalysisPage() {
   const { documentId = '' } = useParams()
+  const [document, setDocument] = useState<DocumentResponse | null>(null)
   const { analysis, isLoading, error, loadAnalysis, analyze } = useAnalysis(documentId)
   const [index, setIndex] = useState<IndexResponse | null>(null)
   const [indexLoading, setIndexLoading] = useState(false)
@@ -74,9 +73,10 @@ export default function AnalysisPage() {
   const [qaError, setQaError] = useState<string | null>(null)
 
   useEffect(() => {
+    DocumentAPI.getDocument(documentId).then(setDocument).catch(() => setDocument(null))
     loadAnalysis().catch(() => undefined)
     RAGAPI.getIndexStatus(documentId).then(setIndex).catch(() => setIndex(null))
-  }, [loadAnalysis])
+  }, [documentId, loadAnalysis])
 
   const startAnalysis = () => {
     analyze().catch(() => undefined)
@@ -101,13 +101,13 @@ export default function AnalysisPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+    <main className="workspace-page">
       <Link to="/" className="btn-ghost mb-8"><ArrowLeft className="h-4 w-4" aria-hidden="true" />Back to documents</Link>
-      <header className="mb-8 flex flex-col gap-4 border-b border-slate-200 pb-8 sm:flex-row sm:items-center sm:justify-between">
-        <div><p className="text-sm font-medium uppercase tracking-wide text-brand-600">Document analysis</p><h1 className="mt-1 text-3xl font-bold text-slate-900">Grounded legal information</h1><p className="mt-2 text-slate-600">Findings are based only on the uploaded document and include source references.</p></div>
+      <header className="workspace-header">
+        <div className="min-w-0"><p className="eyebrow">Document analysis</p><h1 className="mt-1 truncate text-3xl font-bold text-slate-900">{document?.original_filename || 'Grounded legal information'}</h1><p className="mt-2 text-slate-600">Findings are based only on the uploaded document and include source references.</p>{document && <div className="mt-3 flex flex-wrap gap-2"><StatusBadge status={document.processing_status} />{index && <StatusBadge status={index.status === 'ready' ? 'indexed' : 'not-indexed'} />}</div>}</div>
         <div className="flex flex-wrap gap-3">
           {(!analysis || analysis.status === 'failed') && <button onClick={startAnalysis} disabled={isLoading} className="btn-primary shrink-0"><FileSearch className="h-4 w-4" aria-hidden="true" />Analyze Document</button>}
-          <button onClick={startIndexing} disabled={indexLoading || index?.status === 'ready'} className="btn-secondary shrink-0">{indexLoading ? 'Indexing...' : index?.status === 'ready' ? `Indexed (${index.chunk_count})` : 'Index Document'}</button>
+          <Link to={`/qa/${documentId}`} className="btn-secondary shrink-0" aria-label="Ask questions about this document">Ask questions</Link><button onClick={startIndexing} disabled={indexLoading || index?.status === 'ready'} className="btn-secondary shrink-0">{indexLoading ? 'Indexing...' : index?.status === 'ready' ? `Indexed (${index.chunk_count})` : 'Index Document'}</button>
         </div>
       </header>
       {isLoading && <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-6 text-slate-700" role="status"><LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />Analyzing document. This may take a moment.</div>}

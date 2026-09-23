@@ -58,3 +58,7 @@ RAG configuration includes `RAG_CHUNK_SIZE`, `RAG_CHUNK_OVERLAP`, `RAG_EMBEDDING
 The comparison workflow accepts two ready documents, aligns their extracted sections deterministically using normalized headings and stable order, and sends only bounded matched-section pairs to Gemini for structured difference analysis. Added and removed sections are identified locally; material changes retain evidence references for both document IDs, sections, pages, headings, and source quotes. Invalid cross-document citations are rejected.
 
 Start comparison from `/compare` or `POST /api/v1/comparisons` with `document_a_id` and `document_b_id`, then retrieve the result with `GET /api/v1/comparisons/{comparison_id}`. `MAX_COMPARISON_CHARACTERS` and `MAX_COMPARISON_SECTIONS` prevent unbounded direct comparison. Results provide document-grounded legal information and are not a substitute for qualified legal advice.
+
+## Unified workspace flow
+
+The Dashboard is the workspace entry point: upload a document, wait for `READY`, open its analysis, build its search index, and ask grounded questions from the document context. Once two documents are ready, use Compare to inspect added, removed, unchanged, and modified provisions side by side. Evidence cards keep page, section, claim type, and source quotes expandable so findings remain readable on mobile and desktop.

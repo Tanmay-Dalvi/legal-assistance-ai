@@ -4,9 +4,8 @@ import { useState } from 'react'
 import { clsx } from 'clsx'
 
 const NAV_LINKS = [
-  { to: '/analyze', label: 'Analyze Document', soon: true },
-  { to: '/compare', label: 'Compare Documents', soon: true },
-  { to: '/qa', label: 'Ask a Question', soon: true },
+  { to: '/', label: 'Dashboard' },
+  { to: '/compare', label: 'Compare' },
 ]
 
 /**
@@ -45,30 +44,22 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map(({ to, label, soon }) => (
+            {NAV_LINKS.map(({ to, label }) => (
               <div key={to} className="relative">
                 <NavLink
                   to={to}
-                  aria-disabled={soon}
-                  tabIndex={soon ? -1 : undefined}
+                  end={to === '/'}
                   className={({ isActive }) =>
                     clsx(
                       'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                       isActive
                         ? 'bg-brand-50 text-brand-700'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100',
-                      soon && 'opacity-50 cursor-not-allowed pointer-events-none'
                     )
                   }
                 >
                   {label}
                 </NavLink>
-                {soon && (
-                  <span className="absolute -top-1.5 -right-1 px-1 py-0.5 text-[9px] font-bold
-                                   bg-brand-100 text-brand-600 rounded-full uppercase tracking-wide">
-                    Soon
-                  </span>
-                )}
               </div>
             ))}
           </div>
@@ -92,11 +83,11 @@ export default function Navbar() {
         {/* Mobile nav panel */}
         {mobileOpen && (
           <div className="md:hidden pb-4 space-y-1 animate-fade-in">
-            {NAV_LINKS.map(({ to, label, soon }) => (
+            {NAV_LINKS.map(({ to, label }) => (
               <NavLink
                 key={to}
                 to={to}
-                aria-disabled={soon}
+                end={to === '/'}
                 onClick={() => setMobileOpen(false)}
                 className={({ isActive }) =>
                   clsx(
@@ -104,16 +95,10 @@ export default function Navbar() {
                     isActive
                       ? 'bg-brand-50 text-brand-700'
                       : 'text-slate-600 hover:bg-slate-100',
-                    soon && 'opacity-50 cursor-not-allowed pointer-events-none'
                   )
                 }
               >
                 {label}
-                {soon && (
-                  <span className="text-[10px] bg-brand-100 text-brand-600 px-1.5 py-0.5 rounded-full font-semibold uppercase">
-                    Soon
-                  </span>
-                )}
               </NavLink>
             ))}
           </div>

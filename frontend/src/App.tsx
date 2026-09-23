@@ -4,6 +4,7 @@ import HomePage from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import AnalysisPage from '@/pages/AnalysisPage'
 import ComparisonPage from '@/pages/ComparisonPage'
+import QAPage from '@/pages/QAPage'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
 /**
@@ -20,8 +21,8 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/analyze/:documentId" element={<AnalysisPage />} />
             <Route path="/compare" element={<ComparisonPage />} />
+            <Route path="/qa/:documentId" element={<QAPage />} />
             {/* Future routes:
-              <Route path="/qa" element={<QAPage />} />
               <Route path="/summary/:id" element={<SummaryPage />} />
             */}
             <Route path="*" element={<NotFoundPage />} />

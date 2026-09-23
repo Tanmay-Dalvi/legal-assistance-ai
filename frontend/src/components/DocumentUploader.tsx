@@ -176,7 +176,7 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
               disabled={isUploading}
               className="btn-primary"
             >
-              {isUploading ? 'Uploading...' : 'Upload & Analyze'}
+              {isUploading ? 'Uploading...' : 'Upload document'}
             </button>
           </div>
         </div>
