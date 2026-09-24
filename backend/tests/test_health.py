@@ -65,6 +65,25 @@ class TestAPIRouting:
 
 
 class TestConfiguration:
+    def test_settings_use_repository_root_env_file(self, tmp_path, monkeypatch):
+        from app.core.config import ENV_FILE_PATH, PROJECT_ROOT, Settings
+
+        assert PROJECT_ROOT == ENV_FILE_PATH.parent
+        assert ENV_FILE_PATH.name == ".env"
+        assert ENV_FILE_PATH == PROJECT_ROOT / ".env"
+
+        env_file = tmp_path / ".env"
+        env_file.write_text(
+            "GEMINI_MODEL=test-model\nGEMINI_API_KEY=test-key\n",
+            encoding="utf-8",
+        )
+        monkeypatch.chdir(PROJECT_ROOT / "backend")
+        monkeypatch.delenv("GEMINI_MODEL", raising=False)
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        settings = Settings(_env_file=env_file)
+        assert settings.GEMINI_MODEL == "test-model"
+        assert settings.GEMINI_API_KEY == "test-key"
+
     def test_settings_load_successfully(self):
         """Config must load without raising exceptions in test environment."""
         from app.core.config import get_settings
@@ -72,6 +91,11 @@ class TestConfiguration:
         settings = get_settings()
         assert settings.APP_NAME == "Legal Assistance AI"
         assert settings.ENVIRONMENT == "development"
+
+    def test_embedding_model_default_is_current_gemini_model(self):
+        from app.core.config import Settings
+
+        assert Settings(GEMINI_API_KEY="test-key").GEMINI_EMBEDDING_MODEL == "gemini-embedding-2"
 
     def test_settings_have_sensible_defaults(self):
         from app.core.config import get_settings

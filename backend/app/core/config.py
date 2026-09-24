@@ -7,10 +7,15 @@ elsewhere in the application.
 """
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+ENV_FILE_PATH = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -22,7 +27,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILE_PATH,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -49,7 +54,7 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-pro"
-    GEMINI_EMBEDDING_MODEL: str = "models/text-embedding-004"
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-2"
     GEMINI_TIMEOUT_SECONDS: float = 60.0
     GEMINI_MAX_RETRIES: int = 2
     MAX_ANALYSIS_CHARACTERS: int = 100_000

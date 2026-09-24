@@ -2,7 +2,10 @@
 
 from pathlib import Path
 
+import pytest
+
 from app.core.config import Settings
+from app.core.exceptions import LLMServiceError
 from app.document_processing.extractor import DocumentSection, ExtractedContent
 from app.rag.chunker import ChunkingService
 from app.rag.vector_store import LocalVectorStore
@@ -78,6 +81,55 @@ def test_embedding_batches_and_retries():
     )
     assert service.embed_texts(["one"]) == [[0.1, 0.2]]
     assert sleeps == [1]
+
+
+def test_embedding_batches_return_one_vector_per_input():
+    class Item:
+        def __init__(self, values):
+            self.values = values
+
+    class Response:
+        def __init__(self, count):
+            self.embeddings = [Item([0.1, 0.2]) for _ in range(count)]
+
+    class Models:
+        def __init__(self):
+            self.calls = []
+
+        def embed_content(self, **kwargs):
+            self.calls.append(kwargs)
+            return Response(len(kwargs["contents"]))
+
+    class Client:
+        def __init__(self):
+            self.models = Models()
+
+    client = Client()
+    service = LLMService(
+        Settings(GEMINI_API_KEY="test-key", GEMINI_EMBEDDING_MODEL="gemini-embedding-2"),
+        client_factory=lambda _: client,
+    )
+    vectors = service.embed_texts(["one", "two", "three"], batch_size=2)
+    assert len(vectors) == 3
+    assert {len(vector) for vector in vectors} == {2}
+    assert [len(call["contents"]) for call in client.models.calls] == [2, 1]
+    assert all(call["model"] == "gemini-embedding-2" for call in client.models.calls)
+
+
+def test_embedding_failure_is_sanitized():
+    class Models:
+        def embed_content(self, **kwargs):
+            raise RuntimeError("provider details must not escape")
+
+    class Client:
+        models = Models()
+
+    service = LLMService(
+        Settings(GEMINI_API_KEY="test-key", GEMINI_MAX_RETRIES=0),
+        client_factory=lambda _: Client(),
+    )
+    with pytest.raises(LLMServiceError, match="embedding service is unavailable"):
+        service.embed_texts(["one"])
 
 
 def test_local_index_persists_across_store_instances(tmp_path: Path):
