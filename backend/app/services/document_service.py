@@ -157,9 +157,29 @@ class DocumentService:
             raise NotFoundError("Document", document_id)
         return doc
         
-    async def get_all_documents(self) -> list[Document]:
-        result = await self.db.execute(select(Document).order_by(Document.created_at.desc()))
-        return list(result.scalars().all())
+    async def get_all_documents(self) -> list[dict]:
+        from app.models.rag import DocumentIndex
+        stmt = select(Document, DocumentIndex).outerjoin(
+            DocumentIndex, Document.id == DocumentIndex.document_id
+        ).order_by(Document.created_at.desc())
+        result = await self.db.execute(stmt)
+        
+        docs = []
+        for doc, index in result.all():
+            docs.append({
+                "id": doc.id,
+                "original_filename": doc.original_filename,
+                "file_type": doc.file_type,
+                "file_size": doc.file_size,
+                "processing_status": doc.processing_status,
+                "error_message": doc.error_message,
+                "extracted_character_count": doc.extracted_character_count,
+                "page_count": doc.page_count,
+                "upload_timestamp": doc.created_at,
+                "index_status": index.status if index else None,
+                "index_chunk_count": index.chunk_count if index else None,
+            })
+        return docs
         
     async def delete_document(self, document_id: str) -> None:
         doc = await self.get_document(document_id)

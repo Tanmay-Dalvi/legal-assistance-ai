@@ -8,5 +8,7 @@ export interface DocumentResponse {
   extracted_character_count: number | null
   page_count: number | null
   upload_timestamp: string
+  index_status?: string | null
+  index_chunk_count?: number | null
 }
 

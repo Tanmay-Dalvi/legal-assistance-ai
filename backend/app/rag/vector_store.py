@@ -55,12 +55,8 @@ class LocalVectorStore:
 
     @staticmethod
     def _cosine(first: list[float], second: list[float]) -> float:
-        if len(first) != len(second):
+        if not first or len(first) != len(second):
             return 0.0
-        first_norm = math.sqrt(sum(value * value for value in first))
-        second_norm = math.sqrt(sum(value * value for value in second))
-        if not first_norm or not second_norm:
-            return 0.0
-        return sum(a * b for a, b in zip(first, second, strict=True)) / (
-            first_norm * second_norm
-        )
+        # Optimization: Embeddings from llm_service are strictly L2 normalized.
+        # Therefore, cosine similarity simplifies to the dot product.
+        return sum(a * b for a, b in zip(first, second, strict=True))

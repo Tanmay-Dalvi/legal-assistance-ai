@@ -5,7 +5,6 @@ import DocumentUploader from '../components/DocumentUploader'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StatusBadge from '../components/StatusBadge'
 import { DocumentAPI } from '../services/api'
-import { RAGAPI } from '../services/qaService'
 import { DocumentResponse } from '../types/document'
 
 interface IndexState { status: 'ready' | 'not-indexed' | 'processing' | 'failed'; chunk_count?: number }
@@ -28,13 +27,9 @@ export default function HomePage() {
     try {
       const loaded = await DocumentAPI.listDocuments()
       setDocuments(loaded)
-      const ready = loaded.filter((document) => document.processing_status === 'ready')
-      const statuses = await Promise.all(ready.map(async (document) => {
-        try {
-          const index = await RAGAPI.getIndexStatus(document.id)
-          return [document.id, { status: displayIndexStatus(index.status), chunk_count: index.chunk_count }] as const
-        } catch { return [document.id, { status: 'not-indexed' }] as const }
-      }))
+      const statuses = loaded.map((document) => {
+        return [document.id, { status: displayIndexStatus(document.index_status as any), chunk_count: document.index_chunk_count || 0 }] as const
+      })
       setIndexStates(Object.fromEntries(statuses))
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unable to load your documents.')

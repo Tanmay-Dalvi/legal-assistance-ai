@@ -76,18 +76,19 @@ class RAGService:
                 chunks, embeddings
             )
             await self.db.execute(delete(DocumentChunkMetadata).where(DocumentChunkMetadata.document_id == document_id))
-            for chunk in chunks:
-                self.db.add(
-                    DocumentChunkMetadata(
-                        chunk_id=chunk.chunk_id,
-                        document_id=document_id,
-                        page_number=chunk.page_number,
-                        section_id=chunk.section_id,
-                        heading=chunk.heading,
-                        chunk_index=chunk.chunk_index,
-                        character_count=chunk.character_count,
-                    )
+            # Efficiency optimization: Use add_all instead of sequential adds
+            self.db.add_all([
+                DocumentChunkMetadata(
+                    chunk_id=chunk.chunk_id,
+                    document_id=document_id,
+                    page_number=chunk.page_number,
+                    section_id=chunk.section_id,
+                    heading=chunk.heading,
+                    chunk_index=chunk.chunk_index,
+                    character_count=chunk.character_count,
                 )
+                for chunk in chunks
+            ])
             index.status = IndexStatus.READY
             index.chunk_count = len(chunks)
             index.error_message = None

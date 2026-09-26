@@ -16,6 +16,8 @@ class DocumentResponse(BaseModel):
     extracted_character_count: int | None = None
     page_count: int | None = None
     upload_timestamp: datetime
+    index_status: str | None = None
+    index_chunk_count: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
