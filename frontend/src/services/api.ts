@@ -39,7 +39,7 @@ export const DocumentAPI = {
     const formData = new FormData()
     formData.append('file', file)
     
-    const res = await fetch(`${API_BASE_URL}/documents/upload`, {
+    const res = await fetch(`${API_BASE_URL}/api/v1/documents/upload`, {
       method: 'POST',
       body: formData,
     })
@@ -47,17 +47,17 @@ export const DocumentAPI = {
   },
   
   listDocuments: async (): Promise<DocumentResponse[]> => {
-    const res = await fetch(`${API_BASE_URL}/documents`)
+    const res = await fetch(`${API_BASE_URL}/api/v1/documents`)
     return handleResponse<DocumentResponse[]>(res)
   },
   
   getDocument: async (id: string): Promise<DocumentResponse> => {
-    const res = await fetch(`${API_BASE_URL}/documents/${id}`)
+    const res = await fetch(`${API_BASE_URL}/api/v1/documents/${id}`)
     return handleResponse<DocumentResponse>(res)
   },
   
   deleteDocument: async (id: string): Promise<void> => {
-    const res = await fetch(`${API_BASE_URL}/documents/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/api/v1/documents/${id}`, {
       method: 'DELETE',
     })
     return handleResponse<void>(res)

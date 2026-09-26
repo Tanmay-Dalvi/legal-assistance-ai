@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../utils/constants'
 
 export const ComparisonAPI = {
   compare: async (documentAId: string, documentBId: string): Promise<ComparisonResponse> => {
-    const response = await fetch(`${API_BASE_URL}/comparisons`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/comparisons`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ document_a_id: documentAId, document_b_id: documentBId }),
@@ -12,7 +12,7 @@ export const ComparisonAPI = {
     return handleResponse<ComparisonResponse>(response)
   },
   get: async (comparisonId: string): Promise<ComparisonResponse> => {
-    const response = await fetch(`${API_BASE_URL}/comparisons/${comparisonId}`)
+    const response = await fetch(`${API_BASE_URL}/api/v1/comparisons/${comparisonId}`)
     return handleResponse<ComparisonResponse>(response)
   },
 }

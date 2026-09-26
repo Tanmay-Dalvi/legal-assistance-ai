@@ -4,12 +4,12 @@ import { handleResponse } from './api'
 
 export const AnalysisAPI = {
   analyzeDocument: async (documentId: string): Promise<AnalysisResponse> => {
-    const response = await fetch(`${API_BASE_URL}/documents/${documentId}/analyze`, { method: 'POST' })
+    const response = await fetch(`${API_BASE_URL}/api/v1/documents/${documentId}/analyze`, { method: 'POST' })
     return handleResponse<AnalysisResponse>(response)
   },
 
   getAnalysis: async (documentId: string): Promise<AnalysisResponse> => {
-    const response = await fetch(`${API_BASE_URL}/documents/${documentId}/analysis`)
+    const response = await fetch(`${API_BASE_URL}/api/v1/documents/${documentId}/analysis`)
     return handleResponse<AnalysisResponse>(response)
   },
 }
