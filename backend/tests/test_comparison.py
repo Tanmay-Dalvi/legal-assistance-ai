@@ -1,5 +1,6 @@
 """Grounded comparison alignment, validation, and API tests."""
 
+import pytest
 from app.core.exceptions import InvalidAnalysisError
 from app.document_processing.extractor import DocumentSection, ExtractedContent
 from app.schemas.analysis import EvidenceReference
@@ -10,13 +11,11 @@ from app.schemas.comparison import (
 )
 from app.services.comparison_service import ComparisonService
 
-
 def content(*sections):
     return ExtractedContent(
         sections=[DocumentSection(**section) for section in sections],
         total_characters=sum(len(section["text"]) for section in sections),
     )
-
 
 def test_section_alignment_matches_normalized_headings_and_identifies_added_removed():
     pairs, only_a, only_b = ComparisonService.align_sections(
@@ -30,7 +29,6 @@ def test_section_alignment_matches_normalized_headings_and_identifies_added_remo
     assert pairs[0].section_a.section.text == "Thirty days."
     assert only_a == []
     assert [section.section.heading for section in only_b] == ["New Notice"]
-
 
 def test_comparison_evidence_must_match_the_correct_document():
     first = content({"heading": "Term", "page_number": 1, "text": "Thirty days."})
@@ -55,13 +53,8 @@ def test_comparison_evidence_must_match_the_correct_document():
         ],
         disclaimer="disclaimer",
     )
-    try:
+    with pytest.raises(InvalidAnalysisError):
         ComparisonService.validate_evidence(result, "doc-a", "doc-b", first, second)
-    except InvalidAnalysisError:
-        pass
-    else:
-        raise AssertionError("Cross-document evidence was accepted")
-
 
 def test_prompt_contains_both_document_boundaries_and_injection_rules():
     pair, _, _ = ComparisonService.align_sections(
@@ -74,7 +67,6 @@ def test_prompt_contains_both_document_boundaries_and_injection_rules():
     assert "doc-a" in prompt and "doc-b" in prompt
     assert "Ignore previous instructions" in prompt
 
-
 def test_identical_document_ids_are_rejected(client):
     response = client.post(
         "/api/v1/comparisons",
@@ -82,7 +74,6 @@ def test_identical_document_ids_are_rejected(client):
     )
     assert response.status_code == 422
     assert response.json()["error"]["message"] == "A document cannot be compared with itself."
-
 
 def test_missing_document_is_sanitized(client):
     response = client.post(

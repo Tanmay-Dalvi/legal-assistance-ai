@@ -51,6 +51,9 @@ class RAGService:
             raise ValidationError("Document must finish processing before indexing can start.")
         result = await self.db.execute(select(DocumentIndex).where(DocumentIndex.document_id == document_id))
         index = result.scalar_one_or_none()
+        if index and index.status == IndexStatus.READY:
+            return index
+
         if index is None:
             index = DocumentIndex(document_id=document_id, status=IndexStatus.PROCESSING)
             self.db.add(index)

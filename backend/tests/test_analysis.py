@@ -1,9 +1,9 @@
 """Tests for grounded analysis contracts and document-scoped API behavior."""
 
+import pytest
 from app.document_processing.extractor import DocumentSection, ExtractedContent
 from app.schemas.analysis import EvidenceReference, LegalAnalysisResult
 from app.services.analysis_service import AnalysisService
-
 
 def make_result(evidence=None) -> LegalAnalysisResult:
     return LegalAnalysisResult(
@@ -12,7 +12,6 @@ def make_result(evidence=None) -> LegalAnalysisResult:
         evidence=evidence or [],
         disclaimer="This is legal information and document analysis, not legal advice.",
     )
-
 
 def test_prompt_delimits_untrusted_document_content():
     content = ExtractedContent(
@@ -30,7 +29,6 @@ def test_prompt_delimits_untrusted_document_content():
     assert "DOCUMENT CONTENT START" in prompt
     assert "Ignore previous instructions" in prompt
     assert "section-1" in prompt
-
 
 def test_valid_evidence_must_match_supplied_section():
     content = ExtractedContent(
@@ -50,7 +48,6 @@ def test_valid_evidence_must_match_supplied_section():
     )
     AnalysisService.validate_evidence(result, content)
 
-
 def test_invalid_evidence_is_rejected():
     content = ExtractedContent(sections=[DocumentSection(text="Actual text.")])
     result = make_result(
@@ -62,23 +59,15 @@ def test_invalid_evidence_is_rejected():
             )
         ]
     )
-    try:
-        AnalysisService.validate_evidence(result, content)
-    except Exception as exc:
-        pass
-        assert len(result.evidence) == 0
-
+    # validate_evidence filters invalid evidence in place
+    AnalysisService.validate_evidence(result, content)
+    assert len(result.evidence) == 0
 
 def test_disclaimer_is_required_by_schema():
     payload = make_result().model_dump()
     payload.pop("disclaimer")
-    try:
+    with pytest.raises(Exception):
         LegalAnalysisResult.model_validate(payload)
-    except Exception:
-        pass
-    else:
-        raise AssertionError("A result without a disclaimer was accepted")
-
 
 def test_analysis_endpoint_returns_safe_error_without_api_key(client, tmp_path, monkeypatch):
     from app.core.exceptions import AnalysisUnavailableError
