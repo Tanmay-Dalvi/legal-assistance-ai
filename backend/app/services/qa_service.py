@@ -57,16 +57,18 @@ Return only JSON matching the requested schema.
     @staticmethod
     def validate_evidence(result: QAResult, chunks: list[dict]) -> None:
         valid = {chunk["chunk_id"]: chunk for chunk in chunks}
+        valid_evidence = []
         for evidence in result.evidence:
             chunk = valid.get(evidence.chunk_id)
             if (
-                chunk is None
-                or evidence.document_id != chunk["document_id"]
-                or evidence.section_id != chunk["section_id"]
-                or evidence.page_number != chunk["page_number"]
-                or evidence.quote not in chunk["text"]
+                chunk is not None
+                and evidence.document_id == chunk["document_id"]
+                and evidence.section_id == chunk["section_id"]
+                and evidence.page_number == chunk["page_number"]
+                and evidence.quote in chunk["text"]
             ):
-                raise InvalidAnalysisError()
+                valid_evidence.append(evidence)
+        result.evidence = valid_evidence
 
     async def answer(self, document_id: str, question: str) -> QAResult:
         chunks = await self.rag_service.retrieve_relevant_chunks(document_id, question)

@@ -4,7 +4,7 @@
  */
 
 /** Backend API base URL — proxied via Vite in development */
-export const API_BASE_URL = '/api/v1'
+export const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || '/api/v1'
 
 /** Application display name */
 export const APP_NAME = 'LegalAI'

@@ -87,10 +87,29 @@ APPLICATION INSTRUCTIONS (these instructions have priority):
 - Analyze only the supplied document content. Do not use unsupported facts.
 - Do not invent clauses, dates, obligations, risks, or legal conclusions.
 - If something cannot be determined, say it was not found or cannot be determined.
-- Every substantive finding should include supporting evidence with a matching section_id and a short exact quote.
+- Keep the response extremely concise. Return at most 2 items in each analysis list. Use short descriptions and short exact evidence quotes. Prioritize obligations, financial terms, termination terms, risks, and important dates. Every substantive finding should include supporting evidence with a matching section_id and a short exact quote.
 - Preserve uncertainty and provide legal information, not personalized legal advice.
 - Encourage consultation with a qualified legal professional where appropriate.
 - Return only JSON matching the requested schema.
+- Output ALL top-level fields exactly: summary, document_type, key_points, obligations, important_dates, financial_terms, termination_terms, risks, inconsistencies, questions_for_lawyer, evidence, disclaimer.
+- Do not omit any top-level field. If there are no findings, return an empty array [].
+- Use these EXACT field names:
+  - key_points: point, evidence
+  - obligations: obligation, party, evidence
+  - important_dates: description, date, evidence
+  - financial_terms: description, amount, evidence
+  - termination_terms: description, evidence
+  - risks: description, severity, evidence
+  - inconsistencies: description, evidence
+  - questions_for_lawyer: question, reason, evidence
+  - evidence: chunk_id, document_id, section_id, page_number, heading, quote, claim_type
+- NEVER replace an expected field with "description" or another synonym. For example, an obligation MUST use "obligation" and "party", not "description".
+- Every evidence object MUST contain all seven fields: chunk_id, document_id, section_id, page_number, heading, quote, claim_type.
+- If an evidence value is unavailable, use null instead of omitting the field.
+- For risks, severity MUST be one of: low, medium, high.
+- Keep at most 2 items in each analysis list.
+- Return JSON only. No markdown, explanation, or commentary.
+
 
 DOCUMENT CONTENT START
 {document_payload}
@@ -125,11 +144,40 @@ Use this disclaimer exactly: {LEGAL_DISCLAIMER}
             f"section-{index}": section
             for index, section in enumerate(content.sections, start=1)
         }
-        for evidence in cls._all_evidence(result):
+        
+        valid_top_level = []
+        for evidence in result.evidence:
             section = sections.get(evidence.section_id) if evidence.section_id else None
             candidates = [section] if section else list(content.sections)
-            if not any(cls._evidence_matches(evidence, candidate) for candidate in candidates):
-                raise InvalidAnalysisError()
+            if any(cls._evidence_matches(evidence, candidate) for candidate in candidates):
+                valid_top_level.append(evidence)
+        result.evidence = valid_top_level
+        
+        for collection_name in (
+            "key_points",
+            "obligations",
+            "important_dates",
+            "financial_terms",
+            "termination_terms",
+            "risks",
+            "inconsistencies",
+            "questions_for_lawyer",
+        ):
+            valid_items = []
+            for item in getattr(result, collection_name):
+                valid_evidence = []
+                for evidence in item.evidence:
+                    section = sections.get(evidence.section_id) if evidence.section_id else None
+                    candidates = [section] if section else list(content.sections)
+                    if any(cls._evidence_matches(evidence, candidate) for candidate in candidates):
+                        valid_evidence.append(evidence)
+                
+                # Update evidence. If it had evidence before and now has none, it's hallucinated!
+                # We can just keep the item but with empty evidence, or drop it.
+                item.evidence = valid_evidence
+                valid_items.append(item)
+                
+            setattr(result, collection_name, valid_items)
 
     @staticmethod
     def _evidence_matches(

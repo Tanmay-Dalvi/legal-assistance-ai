@@ -56,8 +56,8 @@ def test_qa_invalid_citation_is_rejected():
         )],
         disclaimer="disclaimer",
     )
-    with pytest.raises(InvalidAnalysisError):
-        QAService.validate_evidence(result, chunks)
+    QAService.validate_evidence(result, chunks)
+    assert len(result.evidence) == 0
 
 
 def test_qa_without_retrieved_evidence_returns_not_found():

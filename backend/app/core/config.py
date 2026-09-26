@@ -13,7 +13,6 @@ from typing import Literal
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ENV_FILE_PATH = PROJECT_ROOT / ".env"
 
@@ -57,6 +56,10 @@ class Settings(BaseSettings):
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-2"
     GEMINI_TIMEOUT_SECONDS: float = 60.0
     GEMINI_MAX_RETRIES: int = 2
+    HF_TOKEN: str = ""
+    HF_MODEL: str = "openai/gpt-oss-20b"
+    HF_BASE_URL: str = "https://router.huggingface.co/v1"
+    HF_MAX_TOKENS: int = 4_000
     MAX_ANALYSIS_CHARACTERS: int = 100_000
     RAG_CHUNK_SIZE: int = 1_200
     RAG_CHUNK_OVERLAP: int = 200

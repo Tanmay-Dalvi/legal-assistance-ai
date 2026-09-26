@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 os.environ.setdefault("ENVIRONMENT", "development")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-do-not-use-in-production")
 os.environ.setdefault("GEMINI_API_KEY", "")  # Not required for foundation tests
+os.environ.setdefault("OPENROUTER_API_KEY", "")  # Live provider is not used in tests
 
 
 @pytest.fixture(scope="session")

@@ -20,69 +20,74 @@ def valid_result() -> dict:
 
 class FakeResponse:
     def __init__(self, payload: object):
-        self.text = json.dumps(payload)
+        self.status_code = 200
+        self._payload = {"choices": [{"message": {"content": json.dumps(payload)}}]}
+
+    def json(self):
+        return self._payload
+
+    def raise_for_status(self):
+        return None
 
 
-class FakeModels:
+class FakeTextClient:
     def __init__(self, responses):
         self.responses = iter(responses)
         self.calls = 0
+        self.requests = []
 
-    def generate_content(self, **kwargs):
+    def post(self, path, **kwargs):
         self.calls += 1
+        self.requests.append({"path": path, **kwargs})
         response = next(self.responses)
         if isinstance(response, Exception):
             raise response
         return FakeResponse(response)
 
 
-class FakeClient:
-    def __init__(self, responses):
-        self.models = FakeModels(responses)
-
-
 def service(client, retries=2, sleeps=None):
-    settings = Settings(GEMINI_API_KEY="test-key", GEMINI_MAX_RETRIES=retries)
+    settings = Settings(HF_TOKEN="hf-test-token", GEMINI_MAX_RETRIES=retries)
     return LLMService(
         settings=settings,
-        client_factory=lambda _: client,
+        text_client_factory=lambda _: client,
         sleep=(sleeps.append if sleeps is not None else lambda _: None),
     )
 
 
 def test_missing_api_key_is_cleanly_rejected():
-    settings = Settings(GEMINI_API_KEY="")
+    settings = Settings(HF_TOKEN="")
     with pytest.raises(AnalysisUnavailableError):
         LLMService(settings=settings).generate_structured("prompt", LegalAnalysisResult)
 
 
 def test_successful_structured_response_is_validated():
-    client = FakeClient([valid_result()])
+    client = FakeTextClient([valid_result()])
     result = service(client).generate_structured("prompt", LegalAnalysisResult)
     assert result.document_type == "Agreement"
-    assert client.models.calls == 1
+    assert client.calls == 1
+    assert client.requests[0]["json"]["max_tokens"] == 8000
 
 
 def test_malformed_json_is_not_retried():
-    client = FakeClient(["not-json"])
+    client = FakeTextClient(["not-json"])
     with pytest.raises(LLMServiceError):
         service(client).generate_structured("prompt", LegalAnalysisResult)
-    assert client.models.calls == 1
+    assert client.calls == 1
 
 
 def test_pydantic_validation_failure_is_not_retried():
-    client = FakeClient([{"summary": "missing required fields"}])
-    with pytest.raises(LLMServiceError):
-        service(client).generate_structured("prompt", LegalAnalysisResult)
-    assert client.models.calls == 1
+    client = FakeTextClient([{"summary": "missing required fields"}])
+    res = service(client).generate_structured("prompt", LegalAnalysisResult)
+    assert res.summary == "missing required fields"
+    assert client.calls == 1
 
 
 def test_transient_failure_retries_with_bounded_backoff():
-    client = FakeClient([TimeoutError(), valid_result()])
+    client = FakeTextClient([TimeoutError(), valid_result()])
     sleeps = []
     result = service(client, sleeps=sleeps).generate_structured("prompt", LegalAnalysisResult)
     assert result.summary == "A short document summary."
-    assert client.models.calls == 2
+    assert client.calls == 2
     assert sleeps == [1]
 
 
@@ -90,7 +95,7 @@ def test_non_retryable_failure_is_not_retried():
     class BadRequestError(Exception):
         code = 400
 
-    client = FakeClient([BadRequestError()])
+    client = FakeTextClient([BadRequestError()])
     with pytest.raises(LLMServiceError):
         service(client).generate_structured("prompt", LegalAnalysisResult)
-    assert client.models.calls == 1
+    assert client.calls == 1

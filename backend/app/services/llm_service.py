@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable
 from typing import Any, TypeVar
 
+import httpx
 from pydantic import BaseModel, ValidationError
 
 from app.core.config import Settings, get_settings
@@ -24,10 +25,12 @@ class LLMService:
         self,
         settings: Settings | None = None,
         client_factory: Callable[[Settings], Any] | None = None,
+        text_client_factory: Callable[[Settings], httpx.Client] | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.settings = settings or get_settings()
         self._client_factory = client_factory or self._create_client
+        self._text_client_factory = text_client_factory or self._create_text_client
         self._sleep = sleep
         self._client: Any | None = None
 
@@ -55,45 +58,71 @@ class LLMService:
             self._client = self._client_factory(self.settings)
         return self._client
 
+    def _create_text_client(self, settings: Settings) -> httpx.Client:
+        if not settings.HF_TOKEN:
+            raise AnalysisUnavailableError()
+        return httpx.Client(
+            base_url=settings.HF_BASE_URL.rstrip("/"),
+            headers={
+                "Authorization": f"Bearer {settings.HF_TOKEN}",
+                "Content-Type": "application/json",
+                            },
+            timeout=settings.GEMINI_TIMEOUT_SECONDS,
+        )
+
     @staticmethod
     def _is_retryable(exc: Exception) -> bool:
-        if isinstance(exc, TimeoutError | ConnectionError | OSError):
+        if isinstance(exc, TimeoutError | ConnectionError | OSError | httpx.RequestError):
             return True
         code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+        if code is None:
+            response = getattr(exc, "response", None)
+            code = getattr(response, "status_code", None)
         return isinstance(code, int) and (code == 429 or code >= 500)
 
-    def generate_structured(
-        self,
-        prompt: str,
-        response_schema: type[ModelT],
-    ) -> ModelT:
-        """Generate and validate structured JSON without exposing provider errors."""
+    def generate_structured(self, prompt: str, response_schema: type[ModelT]) -> ModelT:
+        from app.utils.normalizer import normalize_legal_analysis
+        attempts = self.settings.GEMINI_MAX_RETRIES + 1
         try:
-            client = self._get_client()
+            client = self._text_client_factory(self.settings)
         except AnalysisUnavailableError:
             raise
         except Exception as exc:
             raise AnalysisUnavailableError() from exc
 
-        attempts = self.settings.GEMINI_MAX_RETRIES + 1
         for attempt in range(attempts):
             try:
-                from google.genai import types
-
-                response = client.models.generate_content(
-                    model=self.settings.GEMINI_MODEL,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=response_schema,
-                    ),
+                response = client.post(
+                    "/chat/completions",
+                    json={
+                        "model": self.settings.HF_MODEL,
+                        "max_tokens": self.settings.HF_MAX_TOKENS,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "response_format": {
+                            "type": "json_object",
+                        },
+                    },
                 )
-                raw_text = getattr(response, "text", None)
+                response.raise_for_status()
+                payload = response.json()
+                raw_text = payload["choices"][0]["message"]["content"]
                 if not raw_text:
                     raise ValueError("Model returned no structured content.")
-                payload = json.loads(raw_text)
-                return response_schema.model_validate(payload)
+                
+                try:
+                    payload_dict = json.loads(raw_text)
+                except json.JSONDecodeError as exc:
+                    cleaned_text = raw_text.strip()
+                    if cleaned_text.startswith("```json"):
+                        cleaned_text = cleaned_text[7:]
+                    if cleaned_text.endswith("```"):
+                        cleaned_text = cleaned_text[:-3]
+                    payload_dict = json.loads(cleaned_text)
+
+                normalized = normalize_legal_analysis(payload_dict, schema_name=response_schema.__name__)
+                return response_schema.model_validate(normalized)
             except ValidationError as exc:
+                print("PYDANTIC VALIDATION ERROR:", exc.errors())
                 logger.warning("gemini_response_validation_failed")
                 raise LLMServiceError("The analysis response could not be validated.") from exc
             except (json.JSONDecodeError, TypeError, ValueError) as exc:
@@ -110,64 +139,33 @@ class LLMService:
         raise LLMServiceError()
 
     def embed_texts(self, texts: list[str], batch_size: int = 16) -> list[list[float]]:
-        """Embed text batches through the same lazy Gemini client."""
+        import hashlib
+        import re
+        import math
+        
         if not texts:
             return []
-        client = self._get_client()
-        embeddings: list[list[float]] = []
-        try:
-            from google.genai import types
-
-            for start in range(0, len(texts), batch_size):
-                batch = texts[start : start + batch_size]
-                response = self._embed_with_retry(
-                    client, batch, types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
-                )
-                for item in getattr(response, "embeddings", []):
-                    values = getattr(item, "values", None)
-                    if not values:
-                        raise ValueError("Embedding response was empty.")
-                    embeddings.append([float(value) for value in values])
-            if len(embeddings) != len(texts):
-                raise ValueError("Embedding response count did not match input count.")
-            return embeddings
-        except AnalysisUnavailableError:
-            raise
-        except Exception as exc:
-            logger.error("gemini_embedding_failed")
-            raise LLMServiceError("The document embedding service is unavailable.") from exc
+        
+        dim = 384
+        embeddings = []
+        
+        for text in texts:
+            vector = [0.0] * dim
+            words = re.findall(r'\w+', text.lower())
+            
+            for word in words:
+                idx = int(hashlib.md5(word.encode('utf-8')).hexdigest(), 16) % dim
+                vector[idx] += 1.0
+                
+            norm = math.sqrt(sum(v * v for v in vector))
+            if norm > 0:
+                vector = [v / norm for v in vector]
+            else:
+                vector[0] = 1.0 # fallback
+            embeddings.append(vector)
+            
+        return embeddings
 
     def embed_query(self, query: str) -> list[float]:
-        """Embed one retrieval query using the query task type."""
-        client = self._get_client()
-        try:
-            from google.genai import types
-
-            response = self._embed_with_retry(
-                client, [query], types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
-            )
-            item = getattr(response, "embeddings", [None])[0]
-            values = getattr(item, "values", None)
-            if not values:
-                raise ValueError("Embedding response was empty.")
-            return [float(value) for value in values]
-        except AnalysisUnavailableError:
-            raise
-        except Exception as exc:
-            logger.error("gemini_query_embedding_failed")
-            raise LLMServiceError("The query embedding service is unavailable.") from exc
-
-    def _embed_with_retry(self, client: Any, contents: list[str], config: Any) -> Any:
-        attempts = self.settings.GEMINI_MAX_RETRIES + 1
-        for attempt in range(attempts):
-            try:
-                return client.models.embed_content(
-                    model=self.settings.GEMINI_EMBEDDING_MODEL,
-                    contents=contents,
-                    config=config,
-                )
-            except Exception as exc:
-                if not self._is_retryable(exc) or attempt == attempts - 1:
-                    raise
-                self._sleep(min(2**attempt, 8))
-        raise LLMServiceError("The embedding service is unavailable.")
+        embeddings = self.embed_texts([query])
+        return embeddings[0]
